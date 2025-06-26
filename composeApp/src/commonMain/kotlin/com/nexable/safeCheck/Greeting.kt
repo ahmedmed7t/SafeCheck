@@ -1,4 +1,4 @@
-package org.example.project
+package com.nexable.safeCheck
 
 class Greeting {
     private val platform = getPlatform()

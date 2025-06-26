@@ -52,11 +52,11 @@ kotlin {
 }
 
 android {
-    namespace = "org.example.project"
+    namespace = "com.nexable.safeCheck"
     compileSdk = libs.versions.android.compileSdk.get().toInt()
 
     defaultConfig {
-        applicationId = "org.example.project"
+        applicationId = "com.nexable.safeCheck"
         minSdk = libs.versions.android.minSdk.get().toInt()
         targetSdk = libs.versions.android.targetSdk.get().toInt()
         versionCode = 1
