@@ -20,7 +20,7 @@ kotlinx-datetime = "0.6.1"
 ktor = "3.0.1"
 sqldelight = "2.0.2"
 multiplatform-settings = "1.2.0"
-compose-navigation = "2.8.5"
+compose-navigation = "2.7.0"
 
 [libraries]
 kotlin-test = { module = "org.jetbrains.kotlin:kotlin-test", version.ref = "kotlin" }

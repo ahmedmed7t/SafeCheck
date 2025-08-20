@@ -14,9 +14,9 @@ tags: [security, kotlin-multiplatform, privacy, offline-first, mvi, roadmap]
 > **Project Overview**: Fast, explainable safety scoring for URLs, emails, and file hashes using Kotlin Multiplatform with MVI architecture.
 
 ## **Current Status** 
-- ✅ **COMPLETED**: Home screen UI, basic project structure, theme setup, Android no action bar, **Multi-module architecture setup**
-- 🔄 **IN PROGRESS**: Core domain models implementation
-- ⏳ **NEXT**: Business logic and scanning engines
+- ✅ **COMPLETED**: Home screen UI, basic project structure, theme setup, Android no action bar, **Multi-module architecture setup**, **Core domain models & business logic**
+- 🔄 **IN PROGRESS**: Platform-specific implementations
+- ⏳ **NEXT**: Scanning engines and data layer
 
 ---
 
@@ -47,30 +47,28 @@ tags: [security, kotlin-multiplatform, privacy, offline-first, mvi, roadmap]
 
 ---
 
-## **🎯 PHASE 2: Core Domain Models & Business Logic**
+## **🎯 PHASE 2: Core Domain Models & Business Logic** ✅ **COMPLETED**
 
-### **2.1 Core Data Models**
-- [ ] Implement `CheckTarget` sealed interface:
-  ```kotlin
-  sealed interface CheckTarget {
-    @JvmInline value class Url(val value: String): CheckTarget
-    @JvmInline value class Email(val value: String): CheckTarget  
-    @JvmInline value class FileHash(val sha256: String): CheckTarget
-  }
-  ```
-- [ ] Create `Reason` data class with code, message, and score delta
-- [ ] Create `Status` enum (SAFE ≥85, CAUTION 60-84, RISK <60)
-- [ ] Create `ScanResult` data class with target, score, status, reasons, metadata
-- [ ] Implement `ScoreEngine` class with scoring and classification logic
-- [ ] Create validation utilities for input types (URL/Email/Hash detection)
+### **2.1 Core Data Models** ✅ **COMPLETED**
+- [x] ~~Implement `CheckTarget` sealed interface with Url, Email, FileHash~~
+- [x] ~~Create `Reason` data class with code, message, and score delta~~
+- [x] ~~Create `Status` enum (SAFE ≥85, CAUTION 60-84, RISK <60)~~
+- [x] ~~Create `ScanResult` data class with target, score, status, reasons, metadata~~
+- [x] ~~Implement `ScoreEngine` class with scoring and classification logic~~
+- [x] ~~Create validation utilities for input types (URL/Email/Hash detection)~~
 
-### **2.2 Business Logic Implementation**
-- [ ] Implement `SafeCheckService` main orchestrator
-- [ ] Create `Scanner<T: CheckTarget>` interface for different scan types
-- [ ] Implement input auto-detection logic (URL/Email/SHA-256 hash)
-- [ ] Create repository interfaces for data access patterns
-- [ ] Implement use cases for scan operations, history management
-- [ ] Set up error handling and result wrapper types
+### **2.2 Business Logic Implementation** ✅ **COMPLETED**
+- [x] ~~Implement `SafeCheckService` main orchestrator~~
+- [x] ~~Create `Scanner<T: CheckTarget>` interface for different scan types~~
+- [x] ~~Implement input auto-detection logic (URL/Email/SHA-256 hash)~~
+- [x] ~~Create repository interfaces for data access patterns~~
+- [x] ~~Implement use cases for scan operations, history management~~
+- [x] ~~Set up error handling and result wrapper types~~
+
+### **2.3 Cross-Cutting** ✅ **COMPLETED**
+- [x] ~~Rate limiter (token bucket): default 10 req/min per external source~~
+- [x] ~~Retry policy: capped exponential backoff (100ms→1s, max 3)~~
+- [x] ~~Redaction: strip query strings before storing to history/logs~~
 
 ---
 
