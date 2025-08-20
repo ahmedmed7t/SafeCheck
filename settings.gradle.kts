@@ -29,3 +29,17 @@ dependencyResolutionManagement {
 }
 
 include(":composeApp")
+include(":shared")
+
+// Core modules
+include(":core:domain")
+include(":core:data")
+include(":core:net")
+include(":core:platform")
+
+// Feature modules
+include(":feature:urlscan")
+include(":feature:emailscan")
+include(":feature:filescan")
+include(":feature:history")
+include(":feature:settings")

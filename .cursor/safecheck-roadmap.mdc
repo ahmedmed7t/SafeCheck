@@ -1,0 +1,344 @@
+---
+title: SafeCheck Development Roadmap
+subtitle: Complete project todo list and implementation plan
+type: Development Roadmap
+status: Active
+priority: P0
+owners: [Development Team]
+targets: Android, iOS (Kotlin Multiplatform)
+tags: [security, kotlin-multiplatform, privacy, offline-first, mvi, roadmap]
+---
+
+# 📋 SafeCheck Project Development Todo List
+
+> **Project Overview**: Fast, explainable safety scoring for URLs, emails, and file hashes using Kotlin Multiplatform with MVI architecture.
+
+## **Current Status** 
+- ✅ **COMPLETED**: Home screen UI, basic project structure, theme setup, Android no action bar, **Multi-module architecture setup**
+- 🔄 **IN PROGRESS**: Core domain models implementation
+- ⏳ **NEXT**: Business logic and scanning engines
+
+---
+
+## **🏗️ PHASE 1: Project Architecture & Foundation** ✅ **COMPLETED**
+
+### **1.1 Multi-Module Setup** ✅ **COMPLETED**
+- [x] ~~Create `:core:domain` module - Business logic, entities, use cases~~
+- [x] ~~Create `:core:data` module - Repositories, caches, persistence (SQLDelight)~~
+- [x] ~~Create `:core:net` module - Ktor client, interceptors, rate limiting~~
+- [x] ~~Create `:core:platform` module - Platform-specific implementations (expect/actual)~~
+- [x] ~~Create `:feature:urlscan` module - URL scanning functionality~~
+- [x] ~~Create `:feature:emailscan` module - Email scanning functionality~~
+- [x] ~~Create `:feature:filescan` module - File hash scanning functionality~~
+- [x] ~~Create `:feature:history` module - Scan history management~~
+- [x] ~~Create `:feature:settings` module - App settings & preferences~~
+- [x] ~~Configure Koin dependency injection across modules~~
+- [x] ~~Update build.gradle.kts files for all modules~~
+- [x] ~~Set up proper module dependencies and API/implementation declarations~~
+
+### **1.2 Core Dependencies Setup** ✅ **COMPLETED**
+- [x] ~~Add SQLDelight for cross-platform database management~~
+- [x] ~~Add Ktor client for networking with JSON serialization~~
+- [x] ~~Add Multiplatform Settings for preferences storage~~
+- [x] ~~Add kotlinx-datetime for time handling across platforms~~
+- [x] ~~Add kotlinx-serialization for JSON processing~~
+- [x] ~~Configure shared resources (fonts, drawables) properly~~
+- [ ] Set up logging framework (Kermit or similar) - *Optional for MVP*
+
+---
+
+## **🎯 PHASE 2: Core Domain Models & Business Logic**
+
+### **2.1 Core Data Models**
+- [ ] Implement `CheckTarget` sealed interface:
+  ```kotlin
+  sealed interface CheckTarget {
+    @JvmInline value class Url(val value: String): CheckTarget
+    @JvmInline value class Email(val value: String): CheckTarget  
+    @JvmInline value class FileHash(val sha256: String): CheckTarget
+  }
+  ```
+- [ ] Create `Reason` data class with code, message, and score delta
+- [ ] Create `Status` enum (SAFE ≥85, CAUTION 60-84, RISK <60)
+- [ ] Create `ScanResult` data class with target, score, status, reasons, metadata
+- [ ] Implement `ScoreEngine` class with scoring and classification logic
+- [ ] Create validation utilities for input types (URL/Email/Hash detection)
+
+### **2.2 Business Logic Implementation**
+- [ ] Implement `SafeCheckService` main orchestrator
+- [ ] Create `Scanner<T: CheckTarget>` interface for different scan types
+- [ ] Implement input auto-detection logic (URL/Email/SHA-256 hash)
+- [ ] Create repository interfaces for data access patterns
+- [ ] Implement use cases for scan operations, history management
+- [ ] Set up error handling and result wrapper types
+
+---
+
+## **📱 PHASE 3: Platform-Specific Implementations**
+
+### **3.1 Android Platform Features** 
+- [ ] DNS resolution implementation using Android APIs
+- [ ] WHOIS lookup implementation (custom or library)
+- [ ] TLS certificate checking with certificate transparency
+- [ ] Clipboard access with proper permissions
+- [ ] QR code scanning using CameraX or ML Kit
+- [ ] Android Share Target registration in manifest
+- [ ] Camera and network permissions handling
+- [ ] Background task scheduling for scans
+
+### **3.2 iOS Platform Features**
+- [ ] DNS resolution implementation using iOS Network framework
+- [ ] WHOIS lookup implementation (native or library)
+- [ ] TLS certificate checking with iOS Security framework
+- [ ] Clipboard access with proper privacy descriptions
+- [ ] QR code scanning using AVFoundation
+- [ ] iOS Share Extension setup and implementation
+- [ ] Camera and network permissions handling
+- [ ] Background app refresh configuration
+
+---
+
+## **🔍 PHASE 4: Scanning Engines Implementation**
+
+### **4.1 URL Scanner Implementation**
+- [ ] URL normalization and validation (RFC compliance)
+- [ ] URL unshortening with HTTP HEAD redirect following
+- [ ] HTTPS detection and security scoring
+- [ ] TLS certificate expiry checking (days until expiration)
+- [ ] WHOIS domain age verification (days since registration)
+- [ ] DNS A/AAAA record presence validation
+- [ ] Homograph attack detection against brand database
+- [ ] Typosquatting detection using edit distance algorithms
+- [ ] IDN to punycode conversion for internationalized domains
+- [ ] Optional reputation lookup with external APIs
+- [ ] URL shortener service detection and handling
+
+### **4.2 Email Scanner Implementation**
+- [ ] Email syntax validation (RFC 5322 compliance)
+- [ ] Disposable email domain detection (maintain updated list)
+- [ ] MX record presence checking via DNS
+- [ ] SPF record validation for sender policy
+- [ ] DMARC policy detection and validation
+- [ ] DKIM signature validation where available
+- [ ] Domain reputation checking (optional external lookup)
+- [ ] Email provider reputation scoring
+
+### **4.3 File Scanner Implementation**
+- [ ] SHA-256 hash computation and validation
+- [ ] Known malicious hash database integration
+- [ ] File type detection and validation
+- [ ] Hash reputation lookup with external threat intelligence
+- [ ] File size and metadata analysis
+- [ ] Virus Total API integration (optional)
+
+---
+
+## **💾 PHASE 5: Data Layer Implementation**
+
+### **5.1 Database Schema (SQLDelight)**
+- [ ] Create scan history table with proper indexing
+- [ ] Create cache table for reputation lookups with TTL
+- [ ] Create brand/disposable domain lists tables
+- [ ] Create user settings table
+- [ ] Implement database migrations and version management
+- [ ] Set up database encryption for sensitive data
+- [ ] Create database cleanup/maintenance procedures
+
+### **5.2 Repository Implementations**
+- [ ] Scan history repository with search and filtering
+- [ ] Cache repository with TTL management and cleanup
+- [ ] Settings repository with reactive updates
+- [ ] Brand list repository with periodic updates
+- [ ] Rate limiting implementation for external APIs
+- [ ] Offline-first data synchronization strategy
+- [ ] Data export/import functionality
+
+---
+
+## **🎨 PHASE 6: UI/UX Implementation**
+
+### **6.1 Navigation & App Structure**
+- [ ] Set up Compose Navigation with type-safe arguments
+- [ ] Create main navigation graph with nested graphs
+- [ ] Implement deep linking support for scan results
+- [ ] Create navigation between feature modules
+- [ ] Set up bottom navigation or drawer navigation
+- [ ] Implement back stack management
+
+### **6.2 Core Screens Implementation**
+- [x] ~~Home/Dashboard screen~~ ✅ **COMPLETED**
+- [ ] Main scan input screen with auto-detection UI
+- [ ] Scan results display screen with detailed breakdown
+- [ ] Scan progress/loading screen with cancellation
+- [ ] History list screen with search and filtering
+- [ ] History detail screen with rescan option
+- [ ] Settings screen with privacy controls
+
+### **6.3 Feature-Specific Screens**
+- [ ] URL scan dedicated screen with URL preview
+- [ ] Email scan dedicated screen with domain info
+- [ ] File scan dedicated screen with drag-and-drop
+- [ ] QR code scanner screen with live preview
+- [ ] Security tips screen with educational content
+- [ ] Help/About screen with version info
+- [ ] Error screens with retry mechanisms
+
+### **6.4 UI Components & Animations**
+- [ ] Scan result card component with status colors
+- [ ] Animated progress indicators and loading states
+- [ ] Status badges (Safe/Caution/Risk) with proper contrast
+- [ ] Reason chips with expandable details
+- [ ] Input validation components with real-time feedback
+- [ ] Share result component with multiple format options
+- [ ] Pull-to-refresh and infinite scroll implementations
+- [ ] Smooth transitions between screens
+
+---
+
+## **⚙️ PHASE 7: Settings & Configuration**
+
+### **7.1 App Settings Implementation**
+- [ ] Enable/disable external reputation sources toggle
+- [ ] Scan timeout configuration (5s, 10s, 30s options)
+- [ ] History retention settings (30 days, 90 days, 1 year)
+- [ ] Privacy settings with data redaction options
+- [ ] Theme selection (System, Light, Dark)
+- [ ] Language selection with localization support
+- [ ] Notification preferences for scan completion
+- [ ] Default scan types and auto-detection preferences
+
+### **7.2 Privacy & Security Controls**
+- [ ] Query string redaction in logs and history
+- [ ] Data export functionality (JSON, CSV formats)
+- [ ] Data deletion controls with confirmation
+- [ ] User consent management for external lookups
+- [ ] Local vs remote scanning preference toggles
+- [ ] Biometric authentication for sensitive operations
+- [ ] Data encryption at rest configuration
+
+---
+
+## **🔗 PHASE 8: External Integrations**
+
+### **8.1 Share Functionality**
+- [ ] Android Share Target registration and handling
+- [ ] iOS Share Extension implementation with UI
+- [ ] Share scan results in multiple formats (JSON/text/image)
+- [ ] Copy final URL functionality with toast feedback
+- [ ] Export scan reports as PDF or image
+- [ ] Clipboard integration for quick scanning
+- [ ] QR code generation for sharing results
+
+### **8.2 External APIs Integration**
+- [ ] Reputation service integration (VirusTotal, URLVoid, etc.)
+- [ ] Rate limiting and quota management with user feedback
+- [ ] Fallback mechanisms for API failures
+- [ ] Cache TTL management for external data
+- [ ] API key management and rotation
+- [ ] Network timeout and retry logic
+- [ ] Cost monitoring and usage analytics
+
+---
+
+## **✅ PHASE 9: Testing Implementation**
+
+### **9.1 Unit Tests**
+- [ ] ScoreEngine threshold and classification testing
+- [ ] Individual scanning rule tests with edge cases
+- [ ] Input validation and auto-detection tests
+- [ ] Repository tests with mock data and error scenarios
+- [ ] Use case tests with dependency injection
+- [ ] Utilities and helper function tests
+
+### **9.2 Integration Tests**
+- [ ] End-to-end scan flow testing across platforms
+- [ ] Database migration tests with real data
+- [ ] Network timeout and offline handling tests
+- [ ] Platform-specific feature tests (DNS, WHOIS, TLS)
+- [ ] Cross-module integration testing
+- [ ] Performance tests for large datasets
+
+### **9.3 UI Tests**
+- [ ] Navigation flow tests with deep linking
+- [ ] Input validation UI tests with accessibility
+- [ ] Results display tests with different scan types
+- [ ] Settings functionality tests with state persistence
+- [ ] Share functionality tests across platforms
+- [ ] Error state UI tests with recovery flows
+
+---
+
+## **🚀 PHASE 10: Polish & Deployment**
+
+### **10.1 Error Handling & Resilience**
+- [ ] Network timeout graceful handling with offline mode
+- [ ] Invalid input error states with helpful suggestions
+- [ ] External API failure handling with fallbacks
+- [ ] Offline mode functionality with cached results
+- [ ] User-friendly error messages with action buttons
+- [ ] Crash reporting and analytics integration
+- [ ] Recovery mechanisms for corrupted data
+
+### **10.2 Performance Optimization**
+- [ ] Database query optimization with proper indexing
+- [ ] Memory usage optimization and leak detection
+- [ ] Network request optimization with caching
+- [ ] UI performance improvements (lazy loading, pagination)
+- [ ] Battery usage optimization for background operations
+- [ ] App size optimization with code shrinking
+- [ ] Startup time optimization
+
+### **10.3 Deployment Preparation**
+- [ ] Android release build configuration with ProGuard
+- [ ] iOS release build configuration with optimization
+- [ ] App store metadata preparation (descriptions, screenshots)
+- [ ] Privacy policy and terms of service preparation
+- [ ] Beta testing setup with TestFlight/Internal Testing
+- [ ] Crash reporting and analytics setup
+- [ ] App signing and security configuration
+- [ ] Store listing optimization and ASO
+
+---
+
+## **📊 Implementation Priorities**
+
+### **Sprint 1 (Foundation)**
+1. Multi-module setup and basic architecture
+2. Core domain models and ScoreEngine
+3. Basic URL scanner implementation
+4. Database schema and repositories
+
+### **Sprint 2 (Core Features)**
+1. Complete scanning engines (URL, Email, File)
+2. Main UI screens (input, results, history)
+3. Basic navigation and state management
+4. Local heuristics implementation
+
+### **Sprint 3 (Platform Features)**
+1. Platform-specific implementations
+2. Share functionality and external integrations
+3. Settings and preferences
+4. QR code scanning
+
+### **Sprint 4 (Polish & Testing)**
+1. Comprehensive testing suite
+2. Error handling and offline support
+3. Performance optimization
+4. Deployment preparation
+
+---
+
+## **📝 Notes & Considerations**
+
+- **Architecture**: Follow MVI pattern with unidirectional data flow
+- **Dependencies**: Use Koin for DI, SQLDelight for persistence, Ktor for networking
+- **Privacy**: Local heuristics first, external lookups only with consent
+- **Performance**: Optimize for mobile with proper caching and background processing
+- **Accessibility**: Ensure proper contrast ratios and screen reader support
+- **Localization**: Prepare for internationalization from the start
+
+---
+
+**Last Updated**: $(date)
+**Version**: 1.0
+**Status**: Active Development

@@ -2,7 +2,11 @@
 <resources>
     <style parent="Theme.SplashScreen" name="Theme.SafeCheck.Splash">
         <item name="windowSplashScreenBackground">#FF002C43</item>
-        <item name="postSplashScreenTheme">@android:style/Theme.Material.Light.NoActionBar</item>
         <item name="windowSplashScreenAnimatedIcon">@drawable/adaptive_logo</item>
+        <item name="android:windowActionBar">false</item>
+        <item name="android:windowNoTitle">true</item>
+        <item name="android:windowFullscreen">false</item>
+        <item name="android:windowActionBarOverlay">false</item>
+        <item name="android:windowContentOverlay">@null</item>
     </style>
 </resources>

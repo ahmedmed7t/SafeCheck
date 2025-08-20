@@ -1,0 +1,245 @@
+---
+title: SafeCheck
+subtitle: Fast, explainable safety scoring for URLs, emails, and file hashes
+type: Product & Tech Spec (KMP)
+status: Draft
+priority: P0
+owners: [You]
+targets: Android, iOS
+tags: [security, kotlin-multiplatform, privacy, offline-first, mvi]
+---
+
+# 1. One-liner
+SafeCheck scans a user input (URL, email, or file hash) and returns a transparent **safety score (0–100)** with clear reasons, so users can make quick trust decisions.
+
+# 2. Goals (P0)
+- [ ] **Simple UX:** one input, one score, 3 statuses (Safe / Caution / Risk).
+- [ ] **Explainable:** score always paired with top reasons.
+- [ ] **Privacy-first:** local heuristics first; remote lookups only with user consent.
+- [ ] **Offline-capable:** core checks work without network; defer remote calls.
+
+# 3. Non-Goals (P0)
+- Real-time on-device malware scanning
+- Browser/Email client integration (extensions)
+- Full SIEM alerts or enterprise management
+
+# 4. MVP Scope
+## 4.1 Input auto-detect
+- Detect **URL**, **Email**, **SHA-256 (64 hex)**.
+- Shortcuts: clipboard “Scan copied item?”, Android Share Target, iOS Share Extension, QR scanner.
+
+## 4.2 Checks
+**URL**
+- Normalize + **unshorten** (HEAD follow) → final URL/host
+- HTTPS present; **TLS cert expiry** (days)
+- **WHOIS domain age** (days), **DNS A/AAAA present**
+- **Homograph / typosquat** vs brand list (IDN → punycode; edit distance)
+- (Opt-in) **Reputation lookup** on final URL/host
+
+**Email**
+- Syntax validity
+- Domain in **disposable list**
+- **MX presence**, policy presence (SPF/DMARC/DKIM) as heuristics
+
+**File**
+- Accept/compute **SHA-256**; check against known-bad hash lists (opt-in)
+
+## 4.3 Output
+- Score **0–100**, status thresholds: **Safe ≥85**, **Caution 60–84**, **Risk <60**
+- Top 3 reasons (e.g., “Domain age 4 days (−15)”, “No HTTPS (−10)”)
+- Metadata: finalUrl, host, domainAgeDays, certExpiryDays, IPs…
+
+## 4.4 History
+- Local searchable log: target, score, status, timestamp
+- Actions: **Rescan**, **Share report**, **Copy final URL**
+
+# 5. Architecture (KMP multi-module)
+:androidApp
+:iosApp
+:shared
+:core:domain // entities, use-cases, ScoreEngine
+:core:data // repos, caches, persistence (SQLDelight)
+:core:net // Ktor client, interceptors, rate limiting
+:core:platform // expect/actual: DNS, WHOIS, TLS, Clipboard, QR
+:feature:urlscan
+:feature:emailscan
+:feature:filescan
+:feature:history
+:feature:settings
+
+**Patterns**
+- MVI (unidirectional) with `StateFlow`
+- DI: **Koin**
+- Persistence: **SQLDelight** (history + cache TTL)
+- Settings: **Multiplatform Settings**
+- Time: **kotlinx-datetime**
+- Networking: **Ktor** (timeouts, JSON)
+
+# 6. Core Models
+```kotlin
+sealed interface CheckTarget {
+  @JvmInline value class Url(val value: String): CheckTarget
+  @JvmInline value class Email(val value: String): CheckTarget
+  @JvmInline value class FileHash(val sha256: String): CheckTarget
+}
+data class Reason(val code: String, val message: String, val delta: Int)
+enum class Status { SAFE, CAUTION, RISK }
+data class ScanResult(
+  val target: CheckTarget,
+  val score: Int,
+  val status: Status,
+  val reasons: List<Reason>,
+  val metadata: Map<String, String> = emptyMap(),
+  val timestampUtc: Instant = Clock.System.now()
+)
+class ScoreEngine {
+  fun apply(base: Int = 100, reasons: List<Reason>) =
+    (base + reasons.sumOf { it.delta }).coerceIn(0, 100)
+  fun classify(total: Int) = when {
+    total >= 85 -> Status.SAFE
+    total >= 60 -> Status.CAUTION
+    else        -> Status.RISK
+  }
+}
+interface Scanner<T: CheckTarget> { suspend fun scan(target: T): ScanResult }
+class SafeCheckService(
+  private val url: Scanner<CheckTarget.Url>,
+  private val email: Scanner<CheckTarget.Email>,
+  private val file: Scanner<CheckTarget.FileHash>,
+) {
+  suspend fun scan(raw: String): ScanResult = when {
+    Regex("^[A-Fa-f0-9]{64}$").matches(raw) -> file.scan(CheckTarget.FileHash(raw.lowercase()))
+    '@' in raw -> email.scan(CheckTarget.Email(raw.trim()))
+    else -> url.scan(CheckTarget.Url(raw.trim()))
+  }
+}
+
+7. Platform Bridges (expect/actual)
+expect object DnsResolver { suspend fun lookupA(host: String): List<String> }
+expect object WhoisClient { suspend fun domainAgeDays(host: String): Int? }
+expect object TlsInspector { suspend fun certExpiryDays(host: String): Int? }
+expect fun toAsciiHost(host: String): String  // IDN -> punycode
+expect object ClipboardReader { suspend fun lastCopiedText(): String? }
+expect object QrScanner { suspend fun scanOnce(): String? }
+
+
+Android actuals: InetAddress/OkHttp/TrustManager, java.net.IDN, ClipboardManager, ZXing
+
+iOS actuals: CFHost/CFNetwork, Security framework, Foundation IDNA, UIPasteboard, AVFoundation
+
+8. Repos & Caching
+
+ReputationRepo
+
+lookupUrl(url, host): Reputation → Good/Bad/Unknown(source, ttl)
+
+unshorten(url): String?
+
+Cache table: key TEXT PK, verdict TEXT, source TEXT, expiresAt INTEGER
+
+BrandIndex / DisposableDomainRepo
+
+Local JSON packaged; optional remote refresh (opt-in)
+
+9. Scoring Rules (initial)
+
+URL: NO_HTTPS (−10), CERT_EXPIRED (−20), NO_DNS (−20), YOUNG_DOMAIN<30d (−15), TYPOSQUAT<=2 (−20), REPUTATION_HIT (−40), KNOWN_GOOD (+5)
+
+Email: DISPOSABLE_DOMAIN (−15), NO_MX (−20), NO_SPF/DMARC (−5 each)
+
+File: KNOWN_BAD_HASH (−60)
+
+10. UI/UX
+
+Branding
+
+Background: #002C44
+
+Font (Arabic & English): Noto Sans (variable) or IBM Plex Sans Arabic
+
+Main Screen
+
+Single input + “Scan”
+
+“Scan copied item?” prompt
+
+Recent history (last 3)
+
+Result Card
+
+Large score + status pill
+
+Top reasons (1–2)
+
+Actions: See details, Copy final URL, Share report, Report mistake
+
+Details Sheet
+
+Full reason list with deltas
+
+Raw fields: host, domainAgeDays, certExpiryDays, IPs…
+
+11. Privacy & Security
+
+Default local heuristics; remote reputation only with explicit toggle
+
+Redact query strings in logs/history
+
+Export/delete data controls; no raw PII stored
+
+12. Error Handling
+
+Network timeout → proceed with local results; banner “External check timed out”
+
+WHOIS/DNS unavailable → omit reason; show “unknown”
+
+Invalid input → inline field error; preserve last result
+
+13. Testing
+
+Unit: ScoreEngine thresholds; each rule exercised
+
+Golden tests: fixture input → expected ScanResult
+
+Property tests: homograph/Levenshtein boundaries
+
+Contract tests per platform: DNS/WHOIS/TLS actuals with known hosts
+
+14. Roadmap
+
+v0.1 (MVP)
+
+URL heuristics + unshorten + DNS/WHOIS/TLS
+
+Local brand/disposable lists
+
+History, QR, Share Target/Extension
+
+Settings: “Use external reputation sources”
+
+v0.2
+
+Email + FileHash scanners
+
+1–2 reputation sources + TTL cache
+
+v0.3
+
+Rich details, export (JSON/PDF), localization (EN/AR)
+
+15. Sprint-1 Tasks (Executable)
+
+ Project scaffold (modules above) + Koin wiring
+
+ Core models + ScoreEngine + SafeCheckService
+
+ expect/actual stubs for DNS/WHOIS/TLS/IDN/Clipboard
+
+ URL scanner (local heuristics) + unshorten
+
+ SQLDelight schema: history, cache
+
+ Android Compose main screen (input, result, history)
+
+ Basic tests (ScoreEngine, URL rules)
+
