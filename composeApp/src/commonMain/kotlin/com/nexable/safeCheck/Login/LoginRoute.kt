@@ -23,7 +23,7 @@ import safecheck.composeapp.generated.resources.Res
 import safecheck.composeapp.generated.resources.adaptive_logo
 
 @Composable
-fun LoginRoute() {
+fun LoginRoute(initialSharedContent: String? = null) {
     var username by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
 
@@ -87,7 +87,11 @@ fun LoginRoute() {
 
             // Login Button
             Button(
-                onClick = { /* Handle login */ },
+                onClick = { 
+                    // Handle login
+                    // TODO: After successful login, if initialSharedContent is not null,
+                    // navigate to main screen with the shared content pre-filled
+                },
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(56.dp),
