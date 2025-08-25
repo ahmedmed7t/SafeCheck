@@ -14,9 +14,9 @@ tags: [security, kotlin-multiplatform, privacy, offline-first, mvi, roadmap]
 > **Project Overview**: Fast, explainable safety scoring for URLs, emails, and file hashes using Kotlin Multiplatform with MVI architecture.
 
 ## **Current Status** 
-- ✅ **COMPLETED**: Home screen UI, basic project structure, theme setup, Android no action bar, **Multi-module architecture setup**, **Core domain models & business logic**, **Android Platform Features**, **iOS Platform Features**, **URL Scanner Implementation**, **Email Scanner Implementation**, **File Scanner Implementation**
-- 🔄 **IN PROGRESS**: Data layer implementation
-- ⏳ **NEXT**: UI layer implementation
+- ✅ **COMPLETED**: Home screen UI, basic project structure, theme setup, Android no action bar, **Multi-module architecture setup**, **Core domain models & business logic**, **Android Platform Features**, **iOS Platform Features**, **URL Scanner Implementation**, **Email Scanner Implementation**, **File Scanner Implementation**, **Database Schema Implementation**, **Repository Implementations**
+- 🔄 **IN PROGRESS**: UI/UX implementation
+- ⏳ **NEXT**: Testing and quality assurance
 
 ---
 
@@ -133,23 +133,23 @@ tags: [security, kotlin-multiplatform, privacy, offline-first, mvi, roadmap]
 
 ## **💾 PHASE 5: Data Layer Implementation**
 
-### **5.1 Database Schema (SQLDelight)**
-- [ ] Create scan history table with proper indexing
-- [ ] Create cache table for reputation lookups with TTL
-- [ ] Create brand/disposable domain lists tables
-- [ ] Create user settings table
-- [ ] Implement database migrations and version management
-- [ ] Set up database encryption for sensitive data
-- [ ] Create database cleanup/maintenance procedures
+### **5.1 Database Schema (SQLDelight)** ✅ **COMPLETED**
+- [x] ~~Create scan history table with proper indexing~~
+- [x] ~~Create cache table for reputation lookups with TTL~~
+- [x] ~~Create brand/disposable domain lists tables~~
+- [x] ~~Create user settings table~~
+- [x] ~~Implement database migrations and version management~~
+- [x] ~~Set up database encryption for sensitive data~~
+- [x] ~~Create database cleanup/maintenance procedures~~
 
-### **5.2 Repository Implementations**
-- [ ] Scan history repository with search and filtering
-- [ ] Cache repository with TTL management and cleanup
-- [ ] Settings repository with reactive updates
-- [ ] Brand list repository with periodic updates
-- [ ] Rate limiting implementation for external APIs
-- [ ] Offline-first data synchronization strategy
-- [ ] Data export/import functionality
+### **5.2 Repository Implementations** ✅ **COMPLETED**
+- [x] ~~Scan history repository with search and filtering~~
+- [x] ~~Cache repository with TTL management and cleanup~~
+- [x] ~~Settings repository with reactive updates~~
+- [x] ~~Brand list repository with periodic updates~~
+- [x] ~~Rate limiting implementation for external APIs~~
+- [x] ~~Offline-first data synchronization strategy~~
+- [x] ~~Data export/import functionality~~
 
 ---
 

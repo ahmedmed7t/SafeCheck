@@ -1,0 +1,315 @@
+-- SafeCheck Database Schema
+-- Version: 1.0.0
+-- Created: 2023-12-01
+
+-- ================================
+-- SCAN HISTORY TABLE
+-- ================================
+
+CREATE TABLE IF NOT EXISTS ScanHistory (
+    id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+    scan_id TEXT NOT NULL UNIQUE,
+    target_type TEXT NOT NULL, -- URL, EMAIL, FILE_HASH
+    target_value TEXT NOT NULL,
+    score INTEGER NOT NULL,
+    status TEXT NOT NULL, -- SAFE, WARNING, RISK
+    reasons TEXT NOT NULL, -- JSON array of reasons
+    metadata TEXT NOT NULL, -- JSON object with scan metadata
+    scanned_at INTEGER NOT NULL, -- Unix timestamp
+    scan_duration_ms INTEGER NOT NULL,
+    scanner_version TEXT NOT NULL,
+    created_at INTEGER NOT NULL DEFAULT (strftime('%s', 'now')),
+    updated_at INTEGER NOT NULL DEFAULT (strftime('%s', 'now'))
+);
+
+-- Indexes for scan history performance
+CREATE INDEX IF NOT EXISTS idx_scan_history_target_type ON ScanHistory(target_type);
+CREATE INDEX IF NOT EXISTS idx_scan_history_target_value ON ScanHistory(target_value);
+CREATE INDEX IF NOT EXISTS idx_scan_history_scanned_at ON ScanHistory(scanned_at DESC);
+CREATE INDEX IF NOT EXISTS idx_scan_history_status ON ScanHistory(status);
+CREATE INDEX IF NOT EXISTS idx_scan_history_score ON ScanHistory(score);
+CREATE INDEX IF NOT EXISTS idx_scan_history_composite ON ScanHistory(target_type, scanned_at DESC);
+
+-- ================================
+-- CACHE TABLE
+-- ================================
+
+CREATE TABLE IF NOT EXISTS Cache (
+    id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+    cache_key TEXT NOT NULL UNIQUE,
+    cache_type TEXT NOT NULL, -- REPUTATION, DNS, WHOIS, etc.
+    target_value TEXT NOT NULL,
+    cache_data TEXT NOT NULL, -- JSON cached data
+    confidence REAL NOT NULL DEFAULT 0.0,
+    created_at INTEGER NOT NULL DEFAULT (strftime('%s', 'now')),
+    expires_at INTEGER NOT NULL, -- Unix timestamp for TTL
+    hit_count INTEGER NOT NULL DEFAULT 0,
+    last_accessed INTEGER NOT NULL DEFAULT (strftime('%s', 'now'))
+);
+
+-- Indexes for cache performance
+CREATE INDEX IF NOT EXISTS idx_cache_key ON Cache(cache_key);
+CREATE INDEX IF NOT EXISTS idx_cache_type ON Cache(cache_type);
+CREATE INDEX IF NOT EXISTS idx_cache_target ON Cache(target_value);
+CREATE INDEX IF NOT EXISTS idx_cache_expires ON Cache(expires_at);
+CREATE INDEX IF NOT EXISTS idx_cache_composite ON Cache(cache_type, target_value);
+
+-- ================================
+-- BRAND DOMAINS TABLE
+-- ================================
+
+CREATE TABLE IF NOT EXISTS BrandDomains (
+    id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+    domain TEXT NOT NULL UNIQUE,
+    brand_name TEXT NOT NULL,
+    category TEXT NOT NULL, -- BANKING, SOCIAL_MEDIA, ECOMMERCE, etc.
+    trust_level INTEGER NOT NULL DEFAULT 50, -- 0-100 scale
+    is_verified BOOLEAN NOT NULL DEFAULT 0,
+    last_verified INTEGER,
+    created_at INTEGER NOT NULL DEFAULT (strftime('%s', 'now')),
+    updated_at INTEGER NOT NULL DEFAULT (strftime('%s', 'now'))
+);
+
+-- Indexes for brand domains
+CREATE INDEX IF NOT EXISTS idx_brand_domains_domain ON BrandDomains(domain);
+CREATE INDEX IF NOT EXISTS idx_brand_domains_category ON BrandDomains(category);
+CREATE INDEX IF NOT EXISTS idx_brand_domains_trust ON BrandDomains(trust_level DESC);
+
+-- ================================
+-- DISPOSABLE DOMAINS TABLE
+-- ================================
+
+CREATE TABLE IF NOT EXISTS DisposableDomains (
+    id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+    domain TEXT NOT NULL UNIQUE,
+    provider_type TEXT NOT NULL, -- TEMPORARY, GUERRILLA, FORWARDING, etc.
+    confidence REAL NOT NULL DEFAULT 1.0,
+    is_active BOOLEAN NOT NULL DEFAULT 1,
+    first_seen INTEGER NOT NULL DEFAULT (strftime('%s', 'now')),
+    last_seen INTEGER NOT NULL DEFAULT (strftime('%s', 'now')),
+    report_count INTEGER NOT NULL DEFAULT 1,
+    created_at INTEGER NOT NULL DEFAULT (strftime('%s', 'now'))
+);
+
+-- Indexes for disposable domains
+CREATE INDEX IF NOT EXISTS idx_disposable_domains_domain ON DisposableDomains(domain);
+CREATE INDEX IF NOT EXISTS idx_disposable_domains_type ON DisposableDomains(provider_type);
+CREATE INDEX IF NOT EXISTS idx_disposable_domains_active ON DisposableDomains(is_active);
+
+-- ================================
+-- USER SETTINGS TABLE
+-- ================================
+
+CREATE TABLE IF NOT EXISTS UserSettings (
+    id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+    setting_key TEXT NOT NULL UNIQUE,
+    setting_value TEXT NOT NULL,
+    setting_type TEXT NOT NULL, -- STRING, INTEGER, BOOLEAN, JSON
+    is_encrypted BOOLEAN NOT NULL DEFAULT 0,
+    description TEXT,
+    created_at INTEGER NOT NULL DEFAULT (strftime('%s', 'now')),
+    updated_at INTEGER NOT NULL DEFAULT (strftime('%s', 'now'))
+);
+
+-- Index for user settings
+CREATE INDEX IF NOT EXISTS idx_user_settings_key ON UserSettings(setting_key);
+
+-- ================================
+-- DATABASE METADATA TABLE
+-- ================================
+
+CREATE TABLE IF NOT EXISTS DatabaseMetadata (
+    id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+    version_code INTEGER NOT NULL,
+    version_name TEXT NOT NULL,
+    migration_timestamp INTEGER NOT NULL DEFAULT (strftime('%s', 'now')),
+    migration_description TEXT,
+    checksum TEXT
+);
+
+-- ================================
+-- SCAN HISTORY QUERIES
+-- ================================
+
+-- Insert new scan result
+insertScanHistory:
+INSERT INTO ScanHistory (
+    scan_id, target_type, target_value, score, status, 
+    reasons, metadata, scanned_at, scan_duration_ms, scanner_version
+) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+
+-- Get scan history with pagination
+getScanHistory:
+SELECT * FROM ScanHistory 
+ORDER BY scanned_at DESC 
+LIMIT ? OFFSET ?;
+
+-- Get scan history by target type
+getScanHistoryByType:
+SELECT * FROM ScanHistory 
+WHERE target_type = ? 
+ORDER BY scanned_at DESC 
+LIMIT ? OFFSET ?;
+
+-- Get scan history by target value
+getScanHistoryByTarget:
+SELECT * FROM ScanHistory 
+WHERE target_value = ? 
+ORDER BY scanned_at DESC;
+
+-- Search scan history
+searchScanHistory:
+SELECT * FROM ScanHistory 
+WHERE target_value LIKE ? OR reasons LIKE ? 
+ORDER BY scanned_at DESC 
+LIMIT ? OFFSET ?;
+
+-- Get scan statistics
+getScanStatistics:
+SELECT 
+    target_type,
+    COUNT(*) as total_scans,
+    AVG(score) as avg_score,
+    COUNT(CASE WHEN status = 'SAFE' THEN 1 END) as safe_count,
+    COUNT(CASE WHEN status = 'WARNING' THEN 1 END) as warning_count,
+    COUNT(CASE WHEN status = 'RISK' THEN 1 END) as risk_count
+FROM ScanHistory 
+GROUP BY target_type;
+
+-- Delete old scan history (cleanup)
+deleteOldScanHistory:
+DELETE FROM ScanHistory 
+WHERE scanned_at < ?;
+
+-- ================================
+-- CACHE QUERIES
+-- ================================
+
+-- Insert cache entry
+insertCache:
+INSERT OR REPLACE INTO Cache (
+    cache_key, cache_type, target_value, cache_data, 
+    confidence, expires_at, hit_count, last_accessed
+) VALUES (?, ?, ?, ?, ?, ?, ?, ?);
+
+-- Get cache entry
+getCache:
+SELECT * FROM Cache 
+WHERE cache_key = ? AND expires_at > strftime('%s', 'now');
+
+-- Update cache hit count
+updateCacheHit:
+UPDATE Cache 
+SET hit_count = hit_count + 1, last_accessed = strftime('%s', 'now') 
+WHERE cache_key = ?;
+
+-- Clean expired cache entries
+cleanExpiredCache:
+DELETE FROM Cache 
+WHERE expires_at <= strftime('%s', 'now');
+
+-- Get cache statistics
+getCacheStatistics:
+SELECT 
+    cache_type,
+    COUNT(*) as total_entries,
+    AVG(confidence) as avg_confidence,
+    SUM(hit_count) as total_hits
+FROM Cache 
+GROUP BY cache_type;
+
+-- ================================
+-- BRAND DOMAINS QUERIES
+-- ================================
+
+-- Insert brand domain
+insertBrandDomain:
+INSERT OR REPLACE INTO BrandDomains (
+    domain, brand_name, category, trust_level, is_verified, last_verified
+) VALUES (?, ?, ?, ?, ?, ?);
+
+-- Get brand domain by domain
+getBrandDomain:
+SELECT * FROM BrandDomains WHERE domain = ?;
+
+-- Get brand domains by category
+getBrandDomainsByCategory:
+SELECT * FROM BrandDomains 
+WHERE category = ? 
+ORDER BY trust_level DESC;
+
+-- Search brand domains
+searchBrandDomains:
+SELECT * FROM BrandDomains 
+WHERE domain LIKE ? OR brand_name LIKE ? 
+ORDER BY trust_level DESC;
+
+-- ================================
+-- DISPOSABLE DOMAINS QUERIES
+-- ================================
+
+-- Insert disposable domain
+insertDisposableDomain:
+INSERT OR REPLACE INTO DisposableDomains (
+    domain, provider_type, confidence, is_active, first_seen, last_seen, report_count
+) VALUES (?, ?, ?, ?, ?, ?, ?);
+
+-- Check if domain is disposable
+isDisposableDomain:
+SELECT domain FROM DisposableDomains 
+WHERE domain = ? AND is_active = 1;
+
+-- Get disposable domains by type
+getDisposableDomainsByType:
+SELECT * FROM DisposableDomains 
+WHERE provider_type = ? AND is_active = 1 
+ORDER BY confidence DESC;
+
+-- Update disposable domain activity
+updateDisposableDomainActivity:
+UPDATE DisposableDomains 
+SET is_active = ?, last_seen = ?, report_count = report_count + 1 
+WHERE domain = ?;
+
+-- ================================
+-- USER SETTINGS QUERIES
+-- ================================
+
+-- Insert or update setting
+insertOrUpdateSetting:
+INSERT OR REPLACE INTO UserSettings (
+    setting_key, setting_value, setting_type, is_encrypted, description, updated_at
+) VALUES (?, ?, ?, ?, ?, strftime('%s', 'now'));
+
+-- Get setting by key
+getSetting:
+SELECT * FROM UserSettings WHERE setting_key = ?;
+
+-- Get all settings
+getAllSettings:
+SELECT * FROM UserSettings ORDER BY setting_key;
+
+-- Delete setting
+deleteSetting:
+DELETE FROM UserSettings WHERE setting_key = ?;
+
+-- ================================
+-- DATABASE METADATA QUERIES
+-- ================================
+
+-- Insert migration record
+insertMigration:
+INSERT INTO DatabaseMetadata (
+    version_code, version_name, migration_description, checksum
+) VALUES (?, ?, ?, ?);
+
+-- Get current database version
+getCurrentVersion:
+SELECT version_code FROM DatabaseMetadata 
+ORDER BY version_code DESC 
+LIMIT 1;
+
+-- Get migration history
+getMigrationHistory:
+SELECT * FROM DatabaseMetadata 
+ORDER BY version_code DESC;
