@@ -39,20 +39,23 @@ interface FileHashScanner : Scanner<CheckTarget.FileHash> {
 }
 
 /**
- * Default implementation of FileHashScanner with basic local heuristics.
+ * Comprehensive implementation of FileHashScanner with advanced threat analysis.
  */
 class DefaultFileHashScanner(
-    private val scoreEngine: ScoreEngine = ScoreEngine()
+    private val scoreEngine: ScoreEngine = ScoreEngine(),
+    private val virusTotalApiKey: String? = null
 ) : BaseScanner<CheckTarget.FileHash>(), FileHashScanner {
     
+    private val fileScannerImpl = FileScannerImpl(scoreEngine, virusTotalApiKey)
+    
     override val scannerInfo = ScannerInfo(
-        name = "DefaultFileHashScanner",
-        version = "1.0.0",
+        name = "ComprehensiveFileHashScanner",
+        version = "2.0.0",
         supportedTargetTypes = listOf("FILE_HASH"),
-        description = "Basic file hash scanner with local heuristics",
-        requiresNetwork = false,
-        averageScanTimeMs = 200,
-        maxConcurrentScans = 20
+        description = "Comprehensive file hash scanner with threat intelligence, VirusTotal integration, and malicious hash database",
+        requiresNetwork = true,
+        averageScanTimeMs = 1200,
+        maxConcurrentScans = 8
     )
     
     override fun supports(target: CheckTarget): Boolean {
@@ -60,14 +63,15 @@ class DefaultFileHashScanner(
     }
     
     override suspend fun validate(target: CheckTarget.FileHash): Result<Boolean> {
-        return if (InputValidator.isValidSha256(target.sha256)) {
-            Result.success(true)
-        } else {
-            Result.error("Invalid SHA-256 hash format", "INVALID_HASH")
-        }
+        val validation = fileScannerImpl.validateHashOnly(target.sha256)
+        return validation.map { it.isValid }
     }
     
     override suspend fun performScan(target: CheckTarget.FileHash): Result<ScanResult> {
+        return fileScannerImpl.scan(target)
+    }
+    
+    private fun performOldScan(target: CheckTarget.FileHash): Result<ScanResult> {
         val reasons = mutableListOf<Reason>()
         val metadata = mutableMapOf<String, String>()
         
@@ -212,18 +216,16 @@ class DefaultFileHashScanner(
     }
     
     override suspend fun analyzeHashFormat(hash: CheckTarget.FileHash): Result<HashAnalysis> {
-        val isValid = InputValidator.isValidSha256(hash.sha256)
-        val entropy = calculateSimpleEntropy(hash.sha256)
-        
-        return Result.success(
+        val validation = fileScannerImpl.validateHashOnly(hash.sha256)
+        return validation.map { v ->
             HashAnalysis(
-                isValidFormat = isValid,
-                hashType = "SHA-256",
+                isValidFormat = v.isValid,
+                hashType = v.format.name,
                 length = hash.sha256.length,
-                entropy = entropy,
+                entropy = calculateHashEntropy(v.normalizedHash),
                 hasOnlyHexChars = hash.sha256.all { it.isDigit() || it.lowercaseChar() in 'a'..'f' }
             )
-        )
+        }
     }
     
     override suspend fun checkHashReputation(hash: CheckTarget.FileHash): Result<HashReputationAnalysis> {

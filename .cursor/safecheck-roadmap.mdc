@@ -14,9 +14,9 @@ tags: [security, kotlin-multiplatform, privacy, offline-first, mvi, roadmap]
 > **Project Overview**: Fast, explainable safety scoring for URLs, emails, and file hashes using Kotlin Multiplatform with MVI architecture.
 
 ## **Current Status** 
-- ✅ **COMPLETED**: Home screen UI, basic project structure, theme setup, Android no action bar, **Multi-module architecture setup**, **Core domain models & business logic**, **Android Platform Features**, **iOS Platform Features**
-- 🔄 **IN PROGRESS**: Scanning engines implementation
-- ⏳ **NEXT**: Data layer implementation
+- ✅ **COMPLETED**: Home screen UI, basic project structure, theme setup, Android no action bar, **Multi-module architecture setup**, **Core domain models & business logic**, **Android Platform Features**, **iOS Platform Features**, **URL Scanner Implementation**, **Email Scanner Implementation**, **File Scanner Implementation**
+- 🔄 **IN PROGRESS**: Data layer implementation
+- ⏳ **NEXT**: UI layer implementation
 
 ---
 
@@ -98,36 +98,36 @@ tags: [security, kotlin-multiplatform, privacy, offline-first, mvi, roadmap]
 
 ## **🔍 PHASE 4: Scanning Engines Implementation**
 
-### **4.1 URL Scanner Implementation**
-- [ ] URL normalization and validation (RFC compliance)
-- [ ] URL unshortening with HTTP HEAD redirect following
-- [ ] HTTPS detection and security scoring
-- [ ] TLS certificate expiry checking (days until expiration)
-- [ ] WHOIS domain age verification (days since registration)
-- [ ] DNS A/AAAA record presence validation
-- [ ] Homograph attack detection against brand database
-- [ ] Typosquatting detection using edit distance algorithms
-- [ ] IDN to punycode conversion for internationalized domains
-- [ ] Optional reputation lookup with external APIs
-- [ ] URL shortener service detection and handling
+### **4.1 URL Scanner Implementation** ✅ **COMPLETED**
+- [x] ~~URL normalization and validation (RFC compliance)~~
+- [x] ~~URL unshortening with HTTP HEAD redirect following~~
+- [x] ~~HTTPS detection and security scoring~~
+- [x] ~~TLS certificate expiry checking (days until expiration)~~
+- [x] ~~WHOIS domain age verification (days since registration)~~
+- [x] ~~DNS A/AAAA record presence validation~~
+- [x] ~~Homograph attack detection against brand database~~
+- [x] ~~Typosquatting detection using edit distance algorithms~~
+- [x] ~~IDN to punycode conversion for internationalized domains~~
+- [x] ~~Optional reputation lookup with external APIs~~
+- [x] ~~URL shortener service detection and handling~~
 
-### **4.2 Email Scanner Implementation**
-- [ ] Email syntax validation (RFC 5322 compliance)
-- [ ] Disposable email domain detection (maintain updated list)
-- [ ] MX record presence checking via DNS
-- [ ] SPF record validation for sender policy
-- [ ] DMARC policy detection and validation
-- [ ] DKIM signature validation where available
-- [ ] Domain reputation checking (optional external lookup)
-- [ ] Email provider reputation scoring
+### **4.2 Email Scanner Implementation** ✅ **COMPLETED**
+- [x] ~~Email syntax validation (RFC 5322 compliance)~~
+- [x] ~~Disposable email domain detection (maintain updated list)~~
+- [x] ~~MX record presence checking via DNS~~
+- [x] ~~SPF record validation for sender policy~~
+- [x] ~~DMARC policy detection and validation~~
+- [x] ~~DKIM signature validation where available~~
+- [x] ~~Domain reputation checking (optional external lookup)~~
+- [x] ~~Email provider reputation scoring~~
 
-### **4.3 File Scanner Implementation**
-- [ ] SHA-256 hash computation and validation
-- [ ] Known malicious hash database integration
-- [ ] File type detection and validation
-- [ ] Hash reputation lookup with external threat intelligence
-- [ ] File size and metadata analysis
-- [ ] Virus Total API integration (optional)
+### **4.3 File Scanner Implementation** ✅ **COMPLETED**
+- [x] ~~SHA-256 hash computation and validation~~
+- [x] ~~Known malicious hash database integration~~
+- [x] ~~File type detection and validation~~
+- [x] ~~Hash reputation lookup with external threat intelligence~~
+- [x] ~~File size and metadata analysis~~
+- [x] ~~Virus Total API integration (optional)~~
 
 ---
 

@@ -6,12 +6,21 @@ import com.nexable.safecheck.core.domain.model.Result
 import com.nexable.safecheck.core.domain.model.ScanResult
 import com.nexable.safecheck.core.domain.model.ScoreEngine
 import com.nexable.safecheck.core.domain.util.InputValidator
+import com.nexable.safecheck.core.platform.dns.DnsResolver
 
 /**
  * Scanner interface specifically for email targets.
- * Implementations provide email-specific security scanning capabilities.
+ * Implementations provide comprehensive email security scanning capabilities.
  */
 interface EmailScanner : Scanner<CheckTarget.Email> {
+    
+    /**
+     * Validates email syntax according to RFC 5322 standards.
+     * 
+     * @param email The email to validate
+     * @return Result containing syntax analysis
+     */
+    suspend fun validateSyntax(email: CheckTarget.Email): Result<EmailSyntaxAnalysis>
     
     /**
      * Checks if the email domain is disposable/temporary.
@@ -36,23 +45,34 @@ interface EmailScanner : Scanner<CheckTarget.Email> {
      * @return Result containing MX record analysis
      */
     suspend fun checkMxRecords(email: CheckTarget.Email): Result<MxRecordAnalysis>
+    
+    /**
+     * Analyzes email provider reputation and trust level.
+     * 
+     * @param email The email to analyze
+     * @return Result containing provider reputation analysis
+     */
+    suspend fun analyzeProviderReputation(email: CheckTarget.Email): Result<EmailProviderReputationAnalysis>
 }
 
 /**
- * Default implementation of EmailScanner with basic local heuristics.
+ * Comprehensive implementation of EmailScanner with advanced security analysis.
  */
 class DefaultEmailScanner(
+    private val dnsResolver: DnsResolver,
     private val scoreEngine: ScoreEngine = ScoreEngine()
 ) : BaseScanner<CheckTarget.Email>(), EmailScanner {
     
+    private val emailScannerImpl = EmailScannerImpl(dnsResolver, scoreEngine)
+    
     override val scannerInfo = ScannerInfo(
-        name = "DefaultEmailScanner",
-        version = "1.0.0",
+        name = "ComprehensiveEmailScanner",
+        version = "2.0.0",
         supportedTargetTypes = listOf("EMAIL"),
-        description = "Basic email scanner with local heuristics",
-        requiresNetwork = false,
-        averageScanTimeMs = 300,
-        maxConcurrentScans = 15
+        description = "Comprehensive email scanner with RFC 5322 compliance, disposable detection, DNS security analysis",
+        requiresNetwork = true,
+        averageScanTimeMs = 800,
+        maxConcurrentScans = 10
     )
     
     override fun supports(target: CheckTarget): Boolean {
@@ -60,209 +80,64 @@ class DefaultEmailScanner(
     }
     
     override suspend fun validate(target: CheckTarget.Email): Result<Boolean> {
-        return if (InputValidator.isValidEmail(target.value)) {
-            Result.success(true)
-        } else {
-            Result.error("Invalid email format", "INVALID_EMAIL")
-        }
+        val syntaxAnalysis = EmailValidator.validate(target.email)
+        return Result.success(syntaxAnalysis.isValid)
     }
     
     override suspend fun performScan(target: CheckTarget.Email): Result<ScanResult> {
-        val reasons = mutableListOf<Reason>()
-        val metadata = mutableMapOf<String, String>()
-        
-        try {
-            val email = target.value.lowercase()
-            val domain = extractDomain(email)
-            
-            metadata["email"] = email
-            metadata["domain"] = domain
-            
-            // Check for disposable email domains
-            if (isDisposableDomain(domain)) {
-                reasons.add(Reason(
-                    code = "DISPOSABLE_EMAIL",
-                    message = "Email uses a disposable/temporary email service",
-                    delta = -20
-                ))
-                metadata["disposable"] = "true"
-            } else {
-                reasons.add(Reason(
-                    code = "PERMANENT_EMAIL",
-                    message = "Email appears to use a permanent email service",
-                    delta = 5
-                ))
-                metadata["disposable"] = "false"
-            }
-            
-            // Check email length
-            if (email.length > 50) {
-                reasons.add(Reason(
-                    code = "LONG_EMAIL",
-                    message = "Email address is unusually long",
-                    delta = -5
-                ))
-            }
-            
-            // Check for suspicious patterns
-            val suspiciousPatterns = listOf("noreply", "test", "temp", "fake", "spam")
-            val hasSuspiciousPattern = suspiciousPatterns.any { 
-                email.contains(it, ignoreCase = true) 
-            }
-            
-            if (hasSuspiciousPattern) {
-                reasons.add(Reason(
-                    code = "SUSPICIOUS_PATTERN",
-                    message = "Email contains suspicious patterns",
-                    delta = -10
-                ))
-            }
-            
-            // Domain reputation check
-            when {
-                isKnownSafeEmailProvider(domain) -> {
-                    reasons.add(Reason(
-                        code = "TRUSTED_PROVIDER",
-                        message = "Email from trusted email provider",
-                        delta = 10
-                    ))
-                }
-                isKnownSuspiciousEmailProvider(domain) -> {
-                    reasons.add(Reason(
-                        code = "SUSPICIOUS_PROVIDER",
-                        message = "Email from suspicious email provider",
-                        delta = -15
-                    ))
-                }
-                else -> {
-                    reasons.add(Reason(
-                        code = "UNKNOWN_PROVIDER",
-                        message = "Email provider reputation unknown",
-                        delta = 0
-                    ))
-                }
-            }
-            
-            // Check for plus addressing (email+tag@domain.com)
-            if (email.contains("+")) {
-                reasons.add(Reason(
-                    code = "PLUS_ADDRESSING",
-                    message = "Email uses plus addressing (aliasing)",
-                    delta = 0
-                ))
-                metadata["plus_addressing"] = "true"
-            }
-            
-            // Ensure we have at least one reason
-            if (reasons.isEmpty()) {
-                reasons.add(Reason(
-                    code = "BASIC_EMAIL_SCAN",
-                    message = "Basic email validation completed",
-                    delta = 0
-                ))
-            }
-            
-            val scanResult = scoreEngine.createScanResult(
-                target = target,
-                reasons = reasons,
-                metadata = metadata
-            )
-            
-            return Result.success(scanResult)
-            
-        } catch (e: Exception) {
-            return Result.error(
-                message = "Email scan failed: ${e.message}",
-                code = "EMAIL_SCAN_ERROR"
-            )
-        }
+        return emailScannerImpl.scan(target)
+    }
+    
+    override suspend fun validateSyntax(email: CheckTarget.Email): Result<EmailSyntaxAnalysis> {
+        val syntaxAnalysis = EmailValidator.validate(email.email)
+        return Result.success(syntaxAnalysis)
     }
     
     override suspend fun checkDisposableEmail(email: CheckTarget.Email): Result<DisposableEmailAnalysis> {
-        val domain = extractDomain(email.value)
-        val isDisposable = isDisposableDomain(domain)
-        
-        return Result.success(
-            DisposableEmailAnalysis(
-                isDisposable = isDisposable,
-                provider = if (isDisposable) "disposable" else "permanent",
-                confidence = if (isDisposable) 0.9 else 0.8
-            )
-        )
+        val analysis = DisposableEmailDetector.analyze(email.email)
+        return Result.success(analysis)
     }
     
     override suspend fun analyzeEmailSecurity(email: CheckTarget.Email): Result<EmailSecurityAnalysis> {
-        val domain = extractDomain(email.value)
+        val domain = EmailParser.extractDomain(email.email)
         
-        // Simplified security analysis - would query DNS records in real implementation
+        val spfAnalysis = SpfRecordAnalyzer.analyze(domain, dnsResolver)
+        val dmarcAnalysis = DmarcPolicyAnalyzer.analyze(domain, dnsResolver)
+        val dkimAnalysis = DkimAnalyzer.analyze(domain, dnsResolver)
+        
         return Result.success(
             EmailSecurityAnalysis(
-                hasSPF = isKnownSafeEmailProvider(domain),
-                hasDMARC = isKnownSafeEmailProvider(domain),
-                hasDKIM = isKnownSafeEmailProvider(domain),
-                spfPolicy = if (isKnownSafeEmailProvider(domain)) "strict" else "none",
-                dmarcPolicy = if (isKnownSafeEmailProvider(domain)) "quarantine" else "none"
+                hasSPF = spfAnalysis.hasSpfRecord,
+                hasDMARC = dmarcAnalysis.hasDmarcRecord,
+                hasDKIM = dkimAnalysis.hasDkimSupport,
+                spfPolicy = spfAnalysis.spfRecord ?: "none",
+                dmarcPolicy = dmarcAnalysis.policy.name.lowercase()
             )
         )
     }
     
     override suspend fun checkMxRecords(email: CheckTarget.Email): Result<MxRecordAnalysis> {
-        val domain = extractDomain(email.value)
+        val domain = EmailParser.extractDomain(email.email)
+        val mxAnalysis = MxRecordAnalyzer.analyze(domain, dnsResolver)
         
-        // Simplified MX check - would perform actual DNS lookup in real implementation
         return Result.success(
             MxRecordAnalysis(
-                hasMxRecord = !isDisposableDomain(domain),
-                mxServers = if (!isDisposableDomain(domain)) listOf("mail.$domain") else emptyList(),
-                isValid = !isDisposableDomain(domain)
+                hasMxRecord = mxAnalysis.hasMxRecords,
+                mxServers = mxAnalysis.mxRecords.map { it.host },
+                isValid = mxAnalysis.hasMxRecords
             )
         )
     }
     
-    private fun extractDomain(email: String): String {
-        return try {
-            email.split("@").last().lowercase()
-        } catch (e: Exception) {
-            "unknown"
-        }
-    }
-    
-    private fun isDisposableDomain(domain: String): Boolean {
-        val disposableDomains = setOf(
-            "10minutemail.com", "guerrillamail.com", "mailinator.com",
-            "temp-mail.org", "throwaway.email", "yopmail.com",
-            "tempmail.net", "mohmal.com", "sharklasers.com"
-        )
-        return disposableDomains.contains(domain.lowercase())
-    }
-    
-    private fun isKnownSafeEmailProvider(domain: String): Boolean {
-        val safeProviders = setOf(
-            "gmail.com", "outlook.com", "hotmail.com", "yahoo.com",
-            "icloud.com", "protonmail.com", "fastmail.com"
-        )
-        return safeProviders.contains(domain.lowercase())
-    }
-    
-    private fun isKnownSuspiciousEmailProvider(domain: String): Boolean {
-        val suspiciousPatterns = setOf(
-            "spam", "phishing", "malware", "suspicious", "fake"
-        )
-        return suspiciousPatterns.any { domain.contains(it) }
+    override suspend fun analyzeProviderReputation(email: CheckTarget.Email): Result<EmailProviderReputationAnalysis> {
+        val domain = EmailParser.extractDomain(email.email)
+        val analysis = EmailProviderReputationAnalyzer.analyze(domain)
+        return Result.success(analysis)
     }
 }
 
 /**
- * Disposable email analysis result.
- */
-data class DisposableEmailAnalysis(
-    val isDisposable: Boolean,
-    val provider: String,
-    val confidence: Double
-)
-
-/**
- * Email security analysis result.
+ * Legacy email security analysis result for backward compatibility.
  */
 data class EmailSecurityAnalysis(
     val hasSPF: Boolean,
@@ -273,7 +148,7 @@ data class EmailSecurityAnalysis(
 )
 
 /**
- * MX record analysis result.
+ * Legacy MX record analysis result for backward compatibility.
  */
 data class MxRecordAnalysis(
     val hasMxRecord: Boolean,
